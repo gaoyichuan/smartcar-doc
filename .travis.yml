@@ -1,0 +1,17 @@
+language: generic
+sudo: required
+dist: trusty
+before_install:
+- sudo apt-get update
+- sudo apt-get -y install texlive-full
+script:
+- chmod a+x build.sh
+- "./build.sh"
+deploy:
+  provider: releases
+  api_key:
+    secure: TGu2K62/NK+m3ctNvaXXP2xmvQlOF8pOKoIXoSsAjwHtiB0q9l+I8H30RwFOMQuoDR1CJmKfOTZG4Skg8v63XYVbsC05D1UVBVzoi3t7ZlL7RRrhQQ4qsjckeiBbJC23mEABjoJP4f+vvIMEoOG54OENDCghyoJuYEaF/8pMHihWEvRzENi3hHN32vm2ydvZueJk1Cd8BEO11zGbgrXFbOJtJkKVRCYzHcTSCO3DrFhCuHw9Q4KYYktQeU/mJndQl8pStlkYhdE0xGK/qnKvsJA7+7uxZoFKsef9DiWWTGG8Ln8Le0otlh119Gn0kKlssMkakvsknnXvOS6HP86tyvCrzNAGbuwl8Rxf209zzUaXrG7+7EWqoxzaRiBYfnmFLLEKEe054u6/mX2YjQC4oSined706Na0bu7d/swKXgBE95wjmEN6rSpoxDHwH4HZqMCG88OSmvcPupqLz8DtGBdAJ6BjrzSsvJojzWm/v2eVwaI5DcTLmu2sNfF07KAtq96iDSdr4iEiD6V5v5XrWueaAJmhkUDO8SkhO14cdA224clBxkBvhPNgm4RP9EX13geO2oWX5Ol8whVi8yngMWlGa/s4oHqOBOuKIWmOpVsG78LE/sre5qad8AMWHQ9qKCwzPAcI6mArzCngOGMx27Hh7rPhQ2P90Byav6hKETo=
+  file_glob: true
+  file: pdf/*.pdf
+  on:
+    repo: gaoyichuan/smartcar-doc

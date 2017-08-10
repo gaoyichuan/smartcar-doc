@@ -1,0 +1,28 @@
+\documentclass{article}
+\usepackage{xeCJK}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subfigure}
+\usepackage[colorlinks=true,
+linkcolor=blue
+]{hyperref}
+\usepackage{listings}
+\usepackage[outputdir=build]{minted}
+\usepackage{amsmath}
+\usepackage{lastpage}   %获得总页数
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\lhead{}
+\chead{}
+\rhead{}
+\lfoot{}
+\cfoot{}
+\rfoot{\thepage\ of \pageref{LastPage}}%当前页 of 总页数
+\renewcommand{\headrulewidth}{0.4pt}%改为0pt即可去掉页眉下面的横线
+\renewcommand{\footrulewidth}{0.4pt}%改为0pt即可去掉页脚上面的横线
+\lhead{\includegraphics[height=0.8in]{28.png}}  %在此处插入logo.pdf图片
+\setCJKfamilyfont{yy}{YouYuan}                             %幼圆  yy
+
+
+\newcommand{\yy}{\CJKfamily{yy}}
+\renewcommand{\baselinestretch}{1.6}
