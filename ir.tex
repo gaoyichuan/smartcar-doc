@@ -1,0 +1,212 @@
+\input{inc/common.tex}
+
+\graphicspath{{./img/ir/}{./img/}}
+
+\begin{document}
+
+
+\title{6-5 红外寻迹模块介绍}
+\author{工程物理系学生科协技术部\quad 周宇}
+\date{\today}
+\maketitle
+\tableofcontents
+\newpage
+
+
+\section{前言}
+这个文档旨在介绍官方代码中红外寻迹模块部分的使用方法，同时为大家讲解红外寻迹模块的工作原理。
+
+\section{原理图介绍}
+\begin{figure}[h]
+\centering % 使后面的内容居中
+\includegraphics[width=.8\textwidth]{1.png}
+\caption{红外模块原理图}
+\label{红外模块原理图}
+\end{figure}
+红外模块的原理图如图\ref{红外模块原理图}所示，下面我们开始逐个分析图中的元件。
+
+\subsection{发射接收一体的红外对管}
+无色透明为发射管，通电后能够产生人眼不可见红外光（手机拍照可见）；
+
+黑色部分为接收管，内部的电阻会随着接收到红外光的多少而变化：由于黑色吸光，当红外发射管照射在黑色物体上时反射回来的光就较少，接收管接收到的红外光就较少，表现为电阻大；当照射在白色表面时发射的红外线就比较多，表现为接收管的电阻较小。
+
+\subsection{LM393比较器}
+\begin{figure}[h]
+\centering % 使后面的内容居中
+\includegraphics[width=.4\textwidth]{2.png}
+\caption{比较器}
+\label{比较器}
+\end{figure}
+比较器有两个输入端和一个输出端，两个输入端一个称为同相输入端，用“+”号表示，另一个称为反相输入端，用“－”表示。用作比较两个电路时，任意一个输入端加一个固定电压作参考电压（也叫门限电压），另一端则直接接需要比较的信号电压。当“+”端电压高于“－”端电压时，输出正电源电压，当“－”端电压高于“+”端电压时，输出负电源电压（注意，此处所说的正电源电压和负电源电压是指接在比较器正负极的电压）。可以简单理解为：
+\[
+V_0=
+\begin{cases}
+1,  if V_{+}>V_{-}\\
+0,  if V_{+}<V_{-}
+\end{cases}
+\]
+
+如原理图所示，将红外接收端的电压信号传递给LM393的同相输入端“+”，这个变化的电压信号与电压比较器的反相输入端“-”的基准电压相比较，当同相端“+”的电压大于反相端“-”的电压时，电压比较器的输出端“DO”输出高电平电压，当同相端“+”电压小于反相端“-”端电压时，电压比较器的输出端“DO”输出低电平电压，此时开关指示灯亮。
+
+在照射到黑色物体时，接收管的电阻值很大，同相输入端“+”电压升高，使同相端“+”电压大于反相端“-”端电压，电压比较器的输出端DO输出高电平电压，此时开关指示灯不亮。
+
+在照射到白色物体时，接收管的电阻值很小，同相输入端“+”电压降低，使同相端“+”电压小于反相端“-”端电压，电压比较器的输出端DO输出低电平电压，此时开关指示灯亮。
+
+接在反相端“-“端的电位器VR1用于调节该端的电位电压，这个电压也就是电压比较器输入的阀值翻转电压V-。调节红外模块的灵敏度时，仅需调节电位器来改变V-的值。使用时，通常将模块置于白色赛道上，微调电位器，当开关指示灯从熄灭刚好变为常亮即可。
+
+（注：
+一、运算放大器（简称“运放”）和比较器在电路图上的符号相同，如上图，要结合其他信息加以区分。简单讲，比较器是运放的开环应用，但比较器是针对电压门限比较而设计的，要求的比较门限要精确，一般情况下，用运放作比较器达不到满幅输出，而且翻转速度变慢（从ns变为us级），所以尽量不要用运放作比较器。
+
+二、运放可以接入负反馈电路，而比较器不能。所以不能用比较器替换运放。）
+
+\subsection{104电容(0.1uf)}
+104电容并联在电源两段，作用是给电源滤波，大致原则为：系统频率越高，用的电容越小。一般10MHz的用104（0.1μF），100MHz的系统用103（0.01μF）。
+
+另外，为了滤除高频干扰，提高电源稳定性，一般都要给每个芯片并联一个104的电容，并且越靠近芯片位置越好。
+
+\section{红外模块使用方法}
+分析完红外模块的原理，现在我们可以开始研究它如何使用了。
+
+其实也非常简单，通过之前的原理分析，我们知道：在照射到黑色物体时，输出端DO输出高电平电压；在照射到白色物体时，输出端DO输出低电平电压。要想判断红外模块照射到的是黑色物体还是白色物体，用单片机检测一下D0是高电平还是低电平就好了。
+\section{代码解析}
+\lstset{language=C}
+%%\begin{lstlisting}
+\begin{minted}{c}
+#include "IR.h"			//包含头文件IR.h
+#define White OUTPUT_H	//宏定义：编辑源代码时，OUTPUT_H可以用White替换，
+#define Black OUTPUT_L	//OUTPUT_L可以用Black替换，
+		//HW_GPIO.h第395、396行定义OUTPUT_H为1，OUTPUT_L为0
+#if USEIRQ	//见IR.h第15行，把0改为1，则启用中断，否则默认不使用中断
+				//使用中断，则函数定义如下：
+/****************************************
+ * 函数名：IR_Init()
+ * 功能描述：红外初始化函数
+ * 参数：无
+ * 返回：无
+ ****************************************/
+void IR_Init(){
+  GPIO_InitTypeDef gpio_ir;		//定义结构体变量gpio_ir, 参见HW_GPIO.h第422-487行
+  gpio_ir.GPIO_PTx=PTD;				//选择D端口的0-7八个引脚，见Port_Use.txt第28-41行
+  gpio_ir.GPIO_Pins=GPIO_Pin0_7;
+  gpio_ir.GPIO_PinControl=IRQC_ET;	//边沿触发外部中断，见HW_GPIO.h第416行
+  gpio_ir.GPIO_Dir=DIR_INPUT;	//GPIO方向为“输入”
+  gpio_ir.GPIO_Output=White;	//输出高电平
+  gpio_ir.GPIO_Isr=IR_isr;		//调用红外中断回调函数，见IR.c第30-40行
+
+  LPLD_GPIO_Init(gpio_ir);		//初始化gpio_ir,见HW_GPIO.c第29-117行
+
+
+  LPLD_GPIO_EnableIrq(gpio_ir);	//使能GPIO外部中断，见HW_GPIO.c第119-154行
+}
+
+/****************************************
+ * 函数名：IR_isr()
+ * 功能描述：红外中断回调函数，选手可以修改
+ * 参数：无
+ * 返回：无
+ ****************************************/
+void IR_isr(){
+  for(int i=0;i<8;i++)		//读取红外状态
+    IR_state[i]=LPLD_GPIO_Input_b(PTD,i);	//HW_GPIO.c第353-374行
+  }
+}
+
+#else		//不使用中断，则定义函数如下：
+/****************************************
+ * 函数名：IR_Init()
+ * 功能描述：红外初始化函数
+ * 参数：无
+ * 返回：无
+ ****************************************/
+void IR_Init(){
+  GPIO_InitTypeDef gpio_ir;	//定义结构体变量gpio_ir, 参见HW_GPIO.h第422-487行
+  gpio_ir.GPIO_PTx=PTD;		//选择D端口的0-7八个引脚，见Port_Use.txt第28-41行
+  gpio_ir.GPIO_Pins=GPIO_Pin0_7;
+  gpio_ir.GPIO_Dir=DIR_INPUT;  //GPIO方向为“输入”
+gpio_ir.GPIO_Output=White;	 //输出高电平
+
+  LPLD_GPIO_Init(gpio_ir);//初始化gpio_ir,见HW_GPIO.c第29-117行
+}
+
+/****************************************
+ * 函数名：IR_refresh()
+ * 功能描述：红外刷新函数
+ * 参数：无
+ * 返回：无
+ ****************************************/
+void IR_refresh(){
+  for(int i=0;i<8;i++){ 				//读取红外状态
+    IR_state[i]=LPLD_GPIO_Input_b(PTD,i);  //HW_GPIO.c第353-374行
+  }
+}
+
+#endif
+
+%%\end{lstlisting}
+\end{minted}
+
+\section{函数应用举例}
+\subsection{调用$IR\_Init()$函数来初始化红外传感器模块}
+
+\lstset{language=C}
+\begin{lstlisting}
+void Overall_Init_All(){
+  motor_InitializeMotor();
+  OLED_Init();
+  UART_Init();
+  MPU6050_init();
+  CCD_init();
+  Led_Init();
+  Button_Init();
+  Timer_Init();
+  IR_Init();
+  Encoder_Init();
+}
+\end{lstlisting}
+其中，$Overall\_Init\_All()$调用$IR\_Init()$来初始化红外传感器模块。
+
+需要注意的是，所有模块的初始化函数都已经被包含在$Overall\_Init\_All()$中，只需要调用一次$Overall\_Init\_All()$就能完成全部的初始化工作。
+
+\subsection{刷新8个红外模块的状态}
+刷新红外状态的函数已经封装好，为$IR\_refresh()$,调用一次，当前当前8个红外模块的状态就会保存在全局变量数组$IR\_state$中。
+\lstset{language=C}
+\begin{lstlisting}
+void main(void)
+{
+  Overall_Init_All();//初始化全部模块
+  Draw_Startup();    //显示屏显示“工程物理系学生科协”
+  while(1)
+  {
+		IR_refresh();		//调用IR_refresh()函数读取红外状态
+		int a,b,i=0;
+		while((IR_state[i]==White)&(i<8)) {i=i+1};
+    	if (i==8) {a=0,b=0}   //全白，则a=0，b=0
+		else{}
+		motor_DirControlAB(a,b);		//控制AB电机方向
+  }
+}
+
+\end{lstlisting}
+
+上述代码只是红外刷新函数的一个简单示例，其实在主循环中持续刷新红外的状态是不明智的。这样会占用大量的运算资源，甚至会导致其他模块的工作异常，比较规范的使用方法是在定时中断中调用红外模块刷新函数，再根据红外模块的状态执行相应的策略，请参照《重要的辅助功能函数》中对于定时中断的介绍。
+
+\subsection{启用红外模块中断}
+我们用条件编译为选手准备好了另一种红外方案——启用红外模块中断。
+
+要启用红外模块中断，我们首先要完成重要的第一步：
+
+将IR.h中的\#define USEIRQ 0改为\#define USEIRQ 1
+
+红外模块中断为上下沿触发中断，也就是说8个红外模块中任意一个的状态发生改变，程序就会开始执行红外模块的中断子程函数$IR\_isr()$,这个函数是提供给选手自己编辑的，官方代码中这个函数只有一行——刷新$IR\_state$。需要注意的是，这个函数是不能被选手调用的，它的调用是由单片机自动完成的。
+
+假设我还想在中断子程中改变电机的方向，那我就只需改写这个中断子程函数$IR\_isr()$。
+
+\lstset{language=C}
+\begin{lstlisting}
+void IR_isr(){
+IR_refresh();		//调用IR_refresh()函数读取红外状态
+motor_DirControlAB(1,1);		//控制AB电机方向
+}
+
+\end{lstlisting}
+\end{document}
