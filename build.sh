@@ -4,6 +4,9 @@ echo 'Creating output directories...'
 mkdir -p build
 mkdir -p pdf
 
+echo 'Doing some cleanup...'
+rm -rf pdf/*.pdf
+
 echo 'Checking whether we are running in CI environment...'
 if [ $CI ]
 then
