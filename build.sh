@@ -19,6 +19,13 @@ then
 fi
 
 echo 'Invoking XeLaTeX...'
-xelatex -shell-escape -interaction=nonstopmode -output-directory=build ./*.tex
+
+for file in *.tex
+do
+    echo "Building $file..."
+    xelatex -shell-escape -interaction=nonstopmode -output-directory=build $file 
+    xelatex -shell-escape -interaction=nonstopmode -output-directory=build $file # run it twice to avoid possible wrong refs
+done
+
 mv ./build/*.pdf ./pdf/
 
